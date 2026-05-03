@@ -1,164 +1,90 @@
-# Sistema de Gestión de Clientes, Servicios y Reservas
-
 from abc import ABC, abstractmethod
-import datetime
 
-# ---------------- LOG ----------------
+# ===== LOGS =====
 def registrar_log(mensaje):
     with open("logs.txt", "a") as archivo:
-        archivo.write(f"{datetime.datetime.now()} - {mensaje}\n")
+        archivo.write(mensaje + "\n")
 
-# ---------------- EXCEPCIONES ----------------
-class ErrorSistema(Exception):
-    pass
+# ===== CLASE ABSTRACTA GENERAL =====
+class Entidad(ABC):
+    @abstractmethod
+    def mostrar_info(self):
+        pass
 
-class ErrorValidacion(ErrorSistema):
-    pass
-
-class ErrorReserva(ErrorSistema):
-    pass
-
-# ---------------- CLIENTE ----------------
-class Cliente:
-    def __init__(self, nombre, documento):
-        if not nombre or not documento:
-            raise ErrorValidacion("Datos del cliente inválidos")
-        self.__nombre = nombre
-        self.__documento = documento
-
-    def get_nombre(self):
-        return self.__nombre
-
-    def __str__(self):
-        return f"Cliente: {self.__nombre}"
-
-# ---------------- SERVICIO ABSTRACTO ----------------
-class Servicio(ABC):
+# ===== CLIENTE =====
+class Cliente(Entidad):
     def __init__(self, nombre):
+        if not nombre:
+            raise ValueError("El nombre no puede estar vacío")
         self.nombre = nombre
 
-    @abstractmethod
-    def calcular_costo(self):
-        pass
+    def mostrar_info(self):
+        return f"Cliente: {self.nombre}"
+
+# ===== SERVICIO ABSTRACTO =====
+class Servicio(Entidad):
+    def __init__(self, nombre, precio):
+        if precio <= 0:
+            raise ValueError("El precio debe ser mayor a 0")
+        self.nombre = nombre
+        self.precio = precio
 
     @abstractmethod
-    def descripcion(self):
+    def calcular_costo(self, extra=0):
         pass
 
-# ---------------- SERVICIOS ----------------
-class ReservaSala(Servicio):
-    def __init__(self, horas):
-        super().__init__("Reserva de Sala")
-        self.horas = horas
+# ===== SERVICIOS =====
+class ServicioSala(Servicio):
+    def calcular_costo(self, horas=1):
+        return self.precio * horas
 
-    def calcular_costo(self):
-        if self.horas <= 0:
-            raise ErrorValidacion("Horas inválidas")
-        return self.horas * 50
+class ServicioEquipo(Servicio):
+    def calcular_costo(self, dias=1):
+        return self.precio * dias
 
-    def descripcion(self):
-        return f"{self.nombre} por {self.horas} horas"
+class ServicioAsesoria(Servicio):
+    def calcular_costo(self, horas=1):
+        return self.precio * horas
 
-class AlquilerEquipo(Servicio):
-    def __init__(self, dias):
-        super().__init__("Alquiler de Equipo")
-        self.dias = dias
-
-    def calcular_costo(self):
-        if self.dias <= 0:
-            raise ErrorValidacion("Días inválidos")
-        return self.dias * 30
-
-    def descripcion(self):
-        return f"{self.nombre} por {self.dias} días"
-
-class Asesoria(Servicio):
-    def __init__(self, horas):
-        super().__init__("Asesoría")
-        self.horas = horas
-
-    def calcular_costo(self):
-        if self.horas <= 0:
-            raise ErrorValidacion("Horas inválidas")
-        return self.horas * 80
-
-    def descripcion(self):
-        return f"{self.nombre} por {self.horas} horas"
-
-# ---------------- RESERVA ----------------
+# ===== RESERVA =====
 class Reserva:
-    def __init__(self, cliente, servicio):
+    def __init__(self, cliente, servicio, duracion):
+        if duracion <= 0:
+            raise ValueError("Duración inválida")
         self.cliente = cliente
         self.servicio = servicio
-        self.estado = "Pendiente"
+        self.duracion = duracion
 
-    def confirmar(self):
+    def procesar_reserva(self):
         try:
-            costo = self.servicio.calcular_costo()
-            self.estado = "Confirmada"
+            costo = self.servicio.calcular_costo(self.duracion)
+        except TypeError:
+            raise Exception("Error en cálculo de costo") from None
+        else:
             return costo
-        except Exception as e:
-            registrar_log(f"Error al confirmar reserva: {e}")
-            raise ErrorReserva("No se pudo confirmar la reserva")
+        finally:
+            print("Proceso de reserva finalizado")
 
-    def cancelar(self):
-        self.estado = "Cancelada"
+# ===== SIMULACIÓN =====
+def main():
+    try:
+        cliente1 = Cliente("Juan")
+        cliente2 = Cliente("")  # error
 
-    def __str__(self):
-        return f"{self.cliente} - {self.servicio.descripcion()} - Estado: {self.estado}"
+        servicio1 = ServicioSala("Sala", 100)
+        servicio2 = ServicioEquipo("Equipo", -50)  # error
 
-# ---------------- SIMULACIÓN ----------------
-def simulacion():
-    clientes = []
-    reservas = []
+        reserva1 = Reserva(cliente1, servicio1, 2)
+        print("Costo:", reserva1.procesar_reserva())
 
-    # 10 operaciones (válidas e inválidas)
-    operaciones = [
-        ("Juan", "123"),
-        ("", "456"),
-        ("Maria", "789"),
-        ("Pedro", ""),
-        ("Ana", "111"),
-        ("Luis", "222"),
-        ("", ""),
-        ("Sofia", "333"),
-        ("Carlos", "444"),
-        ("Laura", "")
-    ]        
-    
+        reserva2 = Reserva(cliente1, servicio1, -1)  # error
 
-    for nombre, doc in operaciones:
-        try:
-            cliente = Cliente(nombre, doc)
-            clientes.append(cliente)
-            print("Cliente creado:", cliente)
-        except Exception as e:
-            registrar_log(e)
-            print("Error cliente:", e)
+    except Exception as e:
+        print("Error:", e)
+        registrar_log(str(e))
 
-    servicios = [
-        ReservaSala(2),
-        AlquilerEquipo(3),
-        Asesoria(1),
-        ReservaSala(-1),  # error
-        AlquilerEquipo(0)  # error
-    ]
+    finally:
+        print("Sistema finalizado")
 
-    for i in range(len(clientes)):
-        try:
-            servicio = servicios[i % len(servicios)]
-            reserva = Reserva(clientes[i], servicio)
-            costo = reserva.confirmar()
-            reservas.append(reserva)
-            print(reserva, "Costo:", costo)
-        except Exception as e:
-            registrar_log(e)
-            print("Error reserva:", e)
-
-    print("\n--- RESUMEN ---")
-    for r in reservas:
-        print(r)
-
-# ---------------- MAIN ----------------
 if __name__ == "__main__":
-    simulacion()
+    main()
