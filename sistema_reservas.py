@@ -15,14 +15,15 @@ class ErrorServicioNoDisponible(ErrorSistema):
     pass
 
 
-# ===== LOGS DETALLADOS =====
+# ===== LOGS =====
 def registrar_log(tipo, mensaje, contexto=""):
     with open("logs.txt", "a", encoding="utf-8") as f:
         f.write(f"{datetime.now()} | {tipo} | {mensaje} | {contexto}\n")
 
 
-# ===== CLASE ABSTRACTA GENERAL =====
+# ===== CLASE ABSTRACTA =====
 class Entidad(ABC):
+
     @abstractmethod
     def mostrar_info(self):
         pass
@@ -30,9 +31,11 @@ class Entidad(ABC):
 
 # ===== CLIENTE =====
 class Cliente(Entidad):
+
     def __init__(self, nombre):
         if not nombre or not nombre.strip():
             raise ErrorValidacion("Nombre de cliente inválido")
+
         self.nombre = nombre
 
     def mostrar_info(self):
@@ -41,9 +44,12 @@ class Cliente(Entidad):
 
 # ===== SERVICIO ABSTRACTO =====
 class Servicio(Entidad):
+
     def __init__(self, nombre, precio):
+
         if precio <= 0:
             raise ErrorValidacion("Precio inválido")
+
         self.nombre = nombre
         self.precio = precio
 
@@ -54,37 +60,60 @@ class Servicio(Entidad):
 
 # ===== SERVICIOS =====
 class ServicioSala(Servicio):
+
+    def mostrar_info(self):
+        return f"Servicio: {self.nombre} - Precio: {self.precio}"
+
     def calcular_costo(self, horas=1, impuesto=0, descuento=0):
+
         subtotal = self.precio * horas
         total = subtotal + (subtotal * impuesto) - descuento
+
         return total
 
 
 class ServicioEquipo(Servicio):
+
+    def mostrar_info(self):
+        return f"Servicio: {self.nombre} - Precio: {self.precio}"
+
     def calcular_costo(self, dias=1, impuesto=0, descuento=0):
+
         subtotal = self.precio * dias
         total = subtotal + (subtotal * impuesto) - descuento
+
         return total
 
 
 class ServicioAsesoria(Servicio):
+
+    def mostrar_info(self):
+        return f"Servicio: {self.nombre} - Precio: {self.precio}"
+
     def calcular_costo(self, horas=1, impuesto=0, descuento=0):
+
         subtotal = self.precio * horas
         total = subtotal + (subtotal * impuesto) - descuento
+
         return total
 
 
 # ===== RESERVA =====
 class Reserva:
+
     def __init__(self, cliente, servicio, duracion):
+
         if duracion <= 0:
             raise ErrorReserva("Duración inválida")
+
         self.cliente = cliente
         self.servicio = servicio
         self.duracion = duracion
 
     def procesar(self):
+
         try:
+
             if not self.servicio:
                 raise ErrorServicioNoDisponible("Servicio no disponible")
 
@@ -95,57 +124,78 @@ class Reserva:
             )
 
         except ErrorSistema as e:
+
             registrar_log("ERROR", str(e), "Reserva")
             print("Error controlado:", e)
 
         except Exception as e:
+
             registrar_log("ERROR_GENERAL", str(e), "Reserva")
             print("Error inesperado:", e)
 
         else:
+
             print(f"Reserva exitosa para {self.cliente.nombre} → Total: {costo}")
 
         finally:
+
             print("Proceso de reserva finalizado\n")
 
 
 # ===== SISTEMA =====
 class SistemaReservas:
+
     def __init__(self):
+
         self.clientes = []
         self.servicios = []
         self.reservas = []
 
     def agregar_cliente(self, nombre):
+
         try:
+
             cliente = Cliente(nombre)
             self.clientes.append(cliente)
+
+            print(f"Cliente agregado: {nombre}")
+
         except ErrorSistema as e:
+
             registrar_log("ERROR", str(e), "Cliente")
+            print("Error al agregar cliente:", e)
 
     def agregar_servicio(self, servicio):
+
         self.servicios.append(servicio)
 
     def crear_reserva(self, cliente, servicio, duracion):
+
         try:
+
             reserva = Reserva(cliente, servicio, duracion)
             self.reservas.append(reserva)
+
             reserva.procesar()
+
         except ErrorSistema as e:
+
             registrar_log("ERROR", str(e), "Crear reserva")
+            print("Error en reserva:", e)
 
 
-# ===== SIMULACIÓN (10+ OPERACIONES) =====
+# ===== MAIN =====
 def main():
+
     sistema = SistemaReservas()
 
-    # Clientes
+    # ===== CLIENTES =====
     sistema.agregar_cliente("Juan")
     sistema.agregar_cliente("Ana")
     sistema.agregar_cliente("")  # inválido
     sistema.agregar_cliente("Carlos")
 
-    # Servicios
+    # ===== SERVICIOS =====
     sala = ServicioSala("Sala", 100)
     equipo = ServicioEquipo("Equipo", 50)
     asesoria = ServicioAsesoria("Asesoría", 80)
@@ -154,20 +204,32 @@ def main():
     sistema.agregar_servicio(equipo)
     sistema.agregar_servicio(asesoria)
 
-    # Reservas (válidas e inválidas)
+    # ===== RESERVAS =====
     sistema.crear_reserva(sistema.clientes[0], sala, 2)
     sistema.crear_reserva(sistema.clientes[1], equipo, 3)
-    sistema.crear_reserva(sistema.clientes[2] if len(sistema.clientes) > 2 else None, sala, 1)
-    sistema.crear_reserva(sistema.clientes[0], None, 2)
-    sistema.crear_reserva(sistema.clientes[1], asesoria, -1)
+
+    sistema.crear_reserva(
+        sistema.clientes[0],
+        None,
+        2
+    )
+
+    sistema.crear_reserva(
+        sistema.clientes[1],
+        asesoria,
+        -1
+    )
+
     sistema.crear_reserva(sistema.clientes[0], sala, 5)
     sistema.crear_reserva(sistema.clientes[1], equipo, 1)
     sistema.crear_reserva(sistema.clientes[0], asesoria, 2)
     sistema.crear_reserva(sistema.clientes[1], sala, 4)
-    sistema.crear_reserva(sistema.clientes[0], equipo, 0)
+    sistema.crear_reserva(sistema.clientes[0], equipo, 2)
+    sistema.crear_reserva(sistema.clientes[1], asesoria, 1)
 
     print("Sistema ejecutado correctamente")
 
 
+# ===== EJECUCIÓN =====
 if __name__ == "__main__":
     main()
